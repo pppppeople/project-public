@@ -1,97 +1,103 @@
-# WeChat Codex Bot
+# WeChat Remote Codex
 
-> Remote-control my Mac from WeChat. Slightly cursed, surprisingly useful.
+> A WeChat-to-Codex bridge for local automation, task execution, and live progress reporting.
 
-A personal WeChat bridge for Codex.
+This project turns WeChat messages into a local assistant interface.
 
-Chat normally, ask for status, or send a task from the phone and let the Mac do the boring part.
-
-* * *
-
-## About
-
-This is a local always-on assistant bridge.
-
-It listens to WeChat messages, decides whether PP is chatting or asking the computer to work, and routes the message into the right lane.
-
-Task Mode is the fun part:
-
-* start Codex from WeChat
-* run commands on the Mac
-* edit files in the local workspace
-* show a live Terminal log on the computer
-* report progress back through WeChat
-* push a completion notice when the job is done
-
-No account tokens or chat credentials live in this repo. Runtime state stays under the local `.claude` folder.
+It supports conversational replies, status checks, scheduled notifications, and remote task execution on a trusted local machine.
 
 * * *
 
-## Feature Taste
+## Overview
 
-Feature | Rating | Notes
+WeChat Remote Codex runs as a local always-on service.
+
+It polls a WeChat bot channel, classifies incoming messages, and routes them into either chat mode or task mode.
+
+Task mode can:
+
+* start Codex from a WeChat command
+* run commands in a local workspace
+* edit files on the machine
+* open a live Terminal log for visible progress
+* return status updates through WeChat
+* send a completion notice when work finishes
+
+Credentials, message context, runtime state, and task logs are stored outside the repository.
+
+* * *
+
+## Capabilities
+
+Feature | Status | Notes
 --- | --- | ---
-WeChat chat reply | ★★★★☆ | Normal conversation, short replies, less corporate nonsense
-Remote Mac task | ★★★★★ | The reason this exists
-Live desktop log | ★★★★☆ | New tasks open a Terminal window so the invisible background work is no longer invisible
-Status query | ★★★★★ | `扣子状态` answers immediately, even while a long task is running
-Completion push | ★★★★☆ | Finished jobs proactively report back to WeChat
-Scheduled nudges | ★★★☆☆ | 6pm, random daytime messages, and a tiny after-work detector
+Chat replies | Ready | Batches short message bursts and replies conversationally
+Remote task execution | Ready | Runs Codex tasks from trusted WeChat commands
+Live desktop log | Ready | Opens a Terminal tail for each new task
+Instant status query | Ready | Returns task state without waiting for long jobs to finish
+Completion notification | Ready | Pushes success or failure back to WeChat
+Scheduled messages | Ready | Supports fixed-time and randomized proactive messages
 
 * * *
 
 ## Commands
 
-Normal messages are treated as chat.
-
 Control commands:
+
+```text
+状态
+任务
+最近回复
+日志
+帮助
+```
+
+The bot also accepts the configured assistant name as a prefix, for example:
 
 ```text
 扣子状态
 扣子任务
-扣子最近回复
 扣子日志
-扣子帮助
 ```
 
 Remote task examples:
 
 ```text
-扣子，帮我看一下 project 文件夹现在有哪些 git 改动
-执行：运行微信项目的检查
-Codex：整理一下 wechat 项目结构
-帮我打开微信
+执行：运行项目检查
+Codex：整理一下当前项目结构
+扣子，查看当前 git 状态
+打开微信
 ```
 
-Only PP's configured WeChat sender id can trigger computer-control mode.
+Only the configured trusted WeChat sender can trigger computer-control mode.
 
 * * *
 
-## How It Works
+## Project Layout
 
-Path | Job
+Path | Purpose
 --- | ---
-`src/codex-bot.js` | Long-running WeChat listener, router, task runner
-`src/send-core.js` | Shared sender for proactive messages
+`src/codex-bot.js` | Long-running WeChat listener, router, and task runner
+`src/send-core.js` | Shared WeChat sender for proactive messages
 `src/config.js` | Runtime paths and environment overrides
 `bin/wechat-codex-bot.sh` | LaunchAgent entry point
-`bin/codex-generate-message.sh` | Codex CLI wrapper for short generated messages
-`scripts/notify-complete.sh` | Desktop-side completion push
-`scripts/6pm.sh` | After-work message
-`scripts/check-reply.sh` | 18:10 follow-up detector
-`scripts/random.sh` | Occasional daytime nudge
+`bin/codex-generate-message.sh` | Codex CLI wrapper for generated short messages
+`scripts/notify-complete.sh` | Manual completion notification sender
+`scripts/6pm.sh` | Fixed-time proactive message
+`scripts/check-reply.sh` | Follow-up detector
+`scripts/random.sh` | Randomized proactive message
 
 * * *
 
-## Runtime
+## Runtime Files
 
 LaunchAgent:
 
 ```text
-~/Library/LaunchAgents/com.pp.wechat-codex-bot.plist
+~/Library/LaunchAgents/com.example.wechat-codex-bot.plist
 ```
 
-Local state and logs:
+Logs and state:
 
 ```text
 ~/.claude/wechat-codex-bot.log
@@ -102,7 +108,7 @@ Local state and logs:
 ~/.claude/wechat-codex-live/<task-id>.log
 ```
 
-Credentials and WeChat context:
+WeChat channel files:
 
 ```text
 ~/.claude/channels/wechat/account.json
@@ -110,13 +116,13 @@ Credentials and WeChat context:
 ~/.claude/channels/wechat/sync_buf.txt
 ```
 
-Those files are local runtime files. Do not commit them. Seriously. The bot is useful; credential leaks are not.
+These files are local runtime data and should not be committed.
 
 * * *
 
 ## Maintenance
 
-Quick check:
+Check syntax:
 
 ```bash
 npm run check
@@ -128,16 +134,16 @@ Run locally:
 npm start
 ```
 
-Restart the always-on bot:
+Restart the always-on service:
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.pp.wechat-codex-bot
+launchctl kickstart -k gui/$(id -u)/com.example.wechat-codex-bot
 ```
 
 Check service status:
 
 ```bash
-launchctl print gui/$(id -u)/com.pp.wechat-codex-bot
+launchctl print gui/$(id -u)/com.example.wechat-codex-bot
 ```
 
 Refresh WeChat login:
@@ -160,4 +166,4 @@ WECHAT_CODEX_MEMORY_FILE=$HOME/CLAUDE.md
 WECHAT_CODEX_OPEN_TERMINAL=1
 ```
 
-Set `WECHAT_CODEX_OPEN_TERMINAL=0` if you want remote tasks to stay quiet on the desktop.
+Set `WECHAT_CODEX_OPEN_TERMINAL=0` to keep task execution quiet on the desktop.

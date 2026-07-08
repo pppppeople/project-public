@@ -194,14 +194,14 @@ function buildPrompt(text) {
   const memory = readText(MEMORY_FILE).slice(0, 18000);
   const lastProactive = readText(LAST_PROACTIVE_FILE, '').trim();
   return [
-    '你现在通过微信回复 PP。只输出要发送给 PP 的中文微信消息，不要解释，不要 markdown，不要前缀。',
-    '语气自然、直接、亲近，像平时聊天；不要端着，不要写成长文。一般 1-4 句话，除非 PP 明确问复杂问题。',
-    '不要自称 Claude。你是 Codex，但也继承 PP 之前给助手的称呼、偏好和项目记忆。',
-    '如果 PP 问工作/SAP/代码，可以正常帮忙；如果只是闲聊，就像朋友一样接住。',
-    lastProactive ? `最近主动发给 PP 的消息：${lastProactive}` : '',
-    '下面是 PP 的长期记忆，请只作为背景，不要复述：',
+    '你现在通过微信回复用户。只输出要发送给用户的中文微信消息，不要解释，不要 markdown，不要前缀。',
+    '语气自然、直接、清楚。一般 1-4 句话，除非用户明确问复杂问题。',
+    '不要自称 Claude。你是 Codex，并可以读取本地配置里的助手记忆。',
+    '如果用户问工作、代码或电脑操作，可以正常帮忙；如果只是闲聊，就自然接住。',
+    lastProactive ? `最近主动发送的消息：${lastProactive}` : '',
+    '下面是本地长期记忆，请只作为背景，不要复述：',
     memory,
-    `PP 刚刚在微信发来：${text}`,
+    `用户刚刚在微信发来：${text}`,
   ].filter(Boolean).join('\n\n');
 }
 
@@ -290,11 +290,11 @@ function runCodexTask(task, taskMeta) {
     const outFile = path.join('/tmp', `wechat-codex-task-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.txt`);
     const liveLogFile = taskMeta.liveLogFile;
     const prompt = [
-      '你是 PP 通过微信远程唤起的本机 Codex。',
-      '请在这台 Mac 上完成 PP 的任务。可以读取、编辑工作区文件、运行必要命令。',
+      '你是通过微信远程唤起的本机 Codex。',
+      '请在这台机器上完成用户的任务。可以读取、编辑工作区文件、运行必要命令。',
       '除非任务明显危险或信息不足，否则直接动手。不要把回复写成很长的报告。',
       '完成后用中文简短汇报：做了什么、关键结果、如果失败则说明失败原因。',
-      `PP 的微信任务：${task}`,
+      `用户的微信任务：${task}`,
     ].join('\n\n');
 
     const args = [
@@ -555,7 +555,7 @@ async function processControlCommand(senderId, control) {
     const account = loadAccount();
     if (!account) throw new Error('missing account');
     if (senderId !== account.userId) {
-      await sendText(account, senderId, '这个控制台只认 PP 本人的微信。');
+      await sendText(account, senderId, '这个控制台只认配置过的可信微信账号。');
       return;
     }
     let text;
@@ -638,7 +638,7 @@ async function processTaskQueue() {
       const task = parseTaskCommand(item.text);
       if (!task) continue;
       if (item.senderId !== account.userId) {
-        await sendText(account, item.senderId, '这个远程执行入口只认 PP 本人的微信。');
+        await sendText(account, item.senderId, '这个远程执行入口只认配置过的可信微信账号。');
         continue;
       }
       const taskId = `${Date.now().toString(36)}-${crypto.randomBytes(2).toString('hex')}`;

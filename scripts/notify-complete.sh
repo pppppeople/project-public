@@ -1,5 +1,5 @@
 #!/bin/bash
-# Send a desktop-side completion notice to PP's WeChat.
+# Send a desktop-side completion notice to WeChat.
 
 set -euo pipefail
 

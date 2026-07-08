@@ -2,7 +2,7 @@
   "name": "wechat-codex-bot",
   "private": true,
   "version": "0.1.0",
-  "description": "PP's WeChat bridge for Codex chat, remote tasks, and proactive notices.",
+  "description": "A WeChat bridge for Codex chat, remote tasks, and proactive notices.",
   "scripts": {
     "start": "node src/codex-bot.js",
     "check": "node --check src/config.js && node --check src/codex-bot.js && node --check src/send-core.js",
