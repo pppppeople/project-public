@@ -1,0 +1,14 @@
+.env
+.env.*
+node_modules/
+*.log
+.DS_Store
+
+docs/PP_感情记录.md
+account.json
+context_tokens.json
+sync_buf.txt
+processed_messages.json
+wechat-codex-state.json
+wechat-codex-tasks.json
+wechat-codex-live/
