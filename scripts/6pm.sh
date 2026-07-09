@@ -5,9 +5,10 @@ export NVM_DIR="$HOME/.nvm"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-MESSAGE=$("$PROJECT_ROOT/bin/codex-generate-message.sh" "请用中文生成一条下班时间的简短问候消息（1-2句话）。风格：自然、温和。直接输出消息内容，不要加任何前缀。" 2>/dev/null)
+node "$PROJECT_ROOT/scripts/refresh-memory.js" "6pm" >/dev/null 2>&1 || true
+MESSAGE=$(node "$PROJECT_ROOT/scripts/generate-proactive.js" "evening" 2>/dev/null)
 echo "$MESSAGE" | grep -qi "not logged in\|please run\|login\|error\|错误" && MESSAGE=""
-[ -z "$MESSAGE" ] && MESSAGE="下班啦，今天辛苦了，记得休息。"
+[ -z "$MESSAGE" ] && MESSAGE="下班啦，今天辛苦了，记得让自己缓一口气。"
 
 node "$PROJECT_ROOT/src/send-core.js" "$MESSAGE"
 echo "$(date +%s)" > "$HOME/.claude/wechat_6pm_sent"

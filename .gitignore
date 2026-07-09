@@ -12,3 +12,6 @@ processed_messages.json
 wechat-codex-state.json
 wechat-codex-tasks.json
 wechat-codex-live/
+wechat-memory-events.json
+wechat-dynamic-memory.md
+wechat-memory-refresh-state.json

@@ -49,8 +49,9 @@ except:
 
 if [ "$HAS_REPLY" = "no" ]; then
     # 没回复，发加班关心消息
-    MESSAGE=$("$PROJECT_ROOT/bin/codex-generate-message.sh" "用户在固定时间消息后10分钟没有回复，可能还在忙。请用中文生成一条简短关心消息（1-2句话），提醒不要太累。直接输出消息内容。" 2>/dev/null)
-    [ -z "$MESSAGE" ] && MESSAGE="看起来还在忙，别太拼，记得休息一下。"
+    node "$PROJECT_ROOT/scripts/refresh-memory.js" "followup" >/dev/null 2>&1 || true
+    MESSAGE=$(node "$PROJECT_ROOT/scripts/generate-proactive.js" "followup" 2>/dev/null)
+    [ -z "$MESSAGE" ] && MESSAGE="看起来还在忙，别太拼了，记得吃点东西。"
 
     node "$PROJECT_ROOT/src/send-core.js" "$MESSAGE" > /dev/null
 

@@ -14,6 +14,9 @@ const {
   PROCESSED_FILE,
   STATE_FILE,
   TASKS_FILE,
+  MEMORY_EVENTS_FILE,
+  DYNAMIC_MEMORY_FILE,
+  MEMORY_REFRESH_STATE_FILE,
   TASK_LIVE_DIR,
   LOG_FILE,
   LAST_PROACTIVE_FILE,
@@ -24,6 +27,8 @@ const {
   OPEN_TASK_TERMINAL,
   CHANNEL_VERSION,
 } = config;
+
+const MEMORY_REFRESH_SCRIPT = path.join(config.PROJECT_ROOT, 'scripts/refresh-memory.js');
 
 function log(message) {
   const line = `[${new Date().toISOString()}] ${message}\n`;
@@ -60,6 +65,28 @@ function appendRecentMessage(kind, text) {
   state.recentMessages = recent.slice(-20);
   state.updatedAt = nowIso();
   writeJson(STATE_FILE, state);
+}
+
+function appendMemoryEvent(kind, text) {
+  const events = readJson(MEMORY_EVENTS_FILE, []);
+  const list = Array.isArray(events) ? events : [];
+  list.push({ at: nowIso(), kind, text: String(text).slice(0, 1200) });
+  writeJson(MEMORY_EVENTS_FILE, list.slice(-200));
+}
+
+let memoryRefreshTimer = null;
+
+function scheduleMemoryRefresh(reason = 'message') {
+  if (memoryRefreshTimer) clearTimeout(memoryRefreshTimer);
+  memoryRefreshTimer = setTimeout(() => {
+    memoryRefreshTimer = null;
+    const state = readJson(MEMORY_REFRESH_STATE_FILE, {});
+    const last = state.lastStartedAt ? new Date(state.lastStartedAt).getTime() : 0;
+    if (Date.now() - last < 5 * 60 * 1000) return;
+    writeJson(MEMORY_REFRESH_STATE_FILE, { ...state, lastStartedAt: nowIso(), reason });
+    const child = spawn('node', [MEMORY_REFRESH_SCRIPT, reason], { stdio: 'ignore' });
+    child.on('error', (error) => log(`memory refresh spawn failed: ${error.message}`));
+  }, 45000);
 }
 
 function loadTasks() {
@@ -192,6 +219,7 @@ function openLiveTerminal(taskId, liveLogFile) {
 
 function buildPrompt(text) {
   const memory = readText(MEMORY_FILE).slice(0, 18000);
+  const dynamicMemory = readText(DYNAMIC_MEMORY_FILE, '').slice(0, 8000);
   const lastProactive = readText(LAST_PROACTIVE_FILE, '').trim();
   return [
     '你现在通过微信回复用户。只输出要发送给用户的中文微信消息，不要解释，不要 markdown，不要前缀。',
@@ -201,6 +229,8 @@ function buildPrompt(text) {
     lastProactive ? `最近主动发送的消息：${lastProactive}` : '',
     '下面是本地长期记忆，请只作为背景，不要复述：',
     memory,
+    dynamicMemory ? '下面是微信助手最近自动更新的动态状态，也只作为背景：' : '',
+    dynamicMemory,
     `用户刚刚在微信发来：${text}`,
   ].filter(Boolean).join('\n\n');
 }
@@ -420,7 +450,7 @@ let activeTask = null;
 
 function parseControlCommand(text) {
   const normalized = text.trim();
-  const match = normalized.match(/^(?:扣子|codex|Codex)?\s*(状态|在干嘛|现在在干嘛|任务|最近任务|最近回复|回复|日志|帮助|help)\s*$/);
+  const match = normalized.match(/^(?:扣子|codex|Codex)?\s*(状态|在干嘛|现在在干嘛|任务|最近任务|最近回复|回复|动态记忆|记忆|日志|帮助|help)\s*$/);
   return match ? match[1].toLowerCase() : null;
 }
 
@@ -539,12 +569,21 @@ function buildRecentRepliesText() {
   return recent.map((item) => `${formatAge(item.at)}：${item.text}`).join('\n');
 }
 
+function buildDynamicMemoryText() {
+  const text = readText(DYNAMIC_MEMORY_FILE, '').trim();
+  if (!text) return '动态记忆还没生成。你多聊几句，或者等下一次定时消息前自动刷新。';
+  const refreshState = readJson(MEMORY_REFRESH_STATE_FILE, {});
+  const when = refreshState.lastFinishedAt ? `更新时间：${formatAge(refreshState.lastFinishedAt)}\n` : '';
+  return `${when}${text}`;
+}
+
 function buildHelpText() {
   return [
     '可以这样用：',
     '扣子状态：看我有没有活着、当前队列，以及近30分钟任务情况',
     '扣子任务：看近30分钟电脑任务和结果',
     '扣子最近回复：看最近发给你的消息',
+    '扣子记忆：看自动更新的动态状态',
     '扣子日志：看最近后台日志',
     '扣子，整理一下 SAP 项目的 git 状态：让我在电脑上干活',
   ].join('\n');
@@ -562,6 +601,7 @@ async function processControlCommand(senderId, control) {
     if (['状态', '在干嘛', '现在在干嘛'].includes(control)) text = buildStatusText();
     else if (['任务', '最近任务'].includes(control)) text = buildTasksText();
     else if (['最近回复', '回复'].includes(control)) text = buildRecentRepliesText();
+    else if (['动态记忆', '记忆'].includes(control)) text = buildDynamicMemoryText();
     else if (control === '日志') text = recentLogLines(10).join('\n') || '暂无日志。';
     else text = buildHelpText();
     await sendText(account, senderId, truncateForWechat(text));
@@ -572,6 +612,8 @@ async function processControlCommand(senderId, control) {
 
 function queueIncoming(senderId, text) {
   appendRecentMessage('in', text);
+  appendMemoryEvent('in', text);
+  scheduleMemoryRefresh('incoming-message');
   const control = parseControlCommand(text);
   if (control) {
     processControlCommand(senderId, control);

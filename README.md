@@ -6,6 +6,8 @@ This project turns WeChat messages into a local assistant interface.
 
 It supports conversational replies, status checks, scheduled notifications, and remote task execution on a trusted local machine.
 
+Scheduled messages are generated from recent context instead of a fixed phrase bank.
+
 * * *
 
 ## Overview
@@ -22,6 +24,8 @@ Task mode can:
 * open a live Terminal log for visible progress
 * return status updates through WeChat
 * send a completion notice when work finishes
+* summarize recent interactions into a small dynamic memory
+* generate proactive messages from current state instead of static templates
 
 Credentials, message context, runtime state, and task logs are stored outside the repository.
 
@@ -36,7 +40,8 @@ Remote task execution | Ready | Runs Codex tasks from trusted WeChat commands
 Live desktop log | Ready | Opens a Terminal tail for each new task
 Instant status query | Ready | Returns task state without waiting for long jobs to finish
 Completion notification | Ready | Pushes success or failure back to WeChat
-Scheduled messages | Ready | Supports fixed-time and randomized proactive messages
+Dynamic memory | Ready | Summarizes recent messages and tasks into local state
+Scheduled messages | Ready | Generates fixed-time and randomized proactive messages from dynamic context
 
 * * *
 
@@ -48,6 +53,7 @@ Control commands:
 状态
 任务
 最近回复
+记忆
 日志
 帮助
 ```
@@ -57,6 +63,7 @@ The bot also accepts the configured assistant name as a prefix, for example:
 ```text
 扣子状态
 扣子任务
+扣子记忆
 扣子日志
 ```
 
@@ -82,6 +89,8 @@ Path | Purpose
 `src/config.js` | Runtime paths and environment overrides
 `bin/wechat-codex-bot.sh` | LaunchAgent entry point
 `bin/codex-generate-message.sh` | Codex CLI wrapper for generated short messages
+`scripts/refresh-memory.js` | Summarizes recent messages and tasks into dynamic memory
+`scripts/generate-proactive.js` | Generates proactive messages from dynamic memory
 `scripts/notify-complete.sh` | Manual completion notification sender
 `scripts/6pm.sh` | Fixed-time proactive message
 `scripts/check-reply.sh` | Follow-up detector
@@ -106,6 +115,9 @@ Logs and state:
 ~/.claude/wechat-codex-state.json
 ~/.claude/wechat-codex-tasks.json
 ~/.claude/wechat-codex-live/<task-id>.log
+~/.claude/wechat-memory-events.json
+~/.claude/wechat-dynamic-memory.md
+~/.claude/wechat-memory-refresh-state.json
 ```
 
 WeChat channel files:
@@ -167,3 +179,15 @@ WECHAT_CODEX_OPEN_TERMINAL=1
 ```
 
 Set `WECHAT_CODEX_OPEN_TERMINAL=0` to keep task execution quiet on the desktop.
+
+* * *
+
+## Changelog
+
+### 2026-07-09
+
+* Added dynamic memory for recent WeChat messages, proactive replies, and task history.
+* Added context-aware proactive message generation for fixed-time, random, follow-up, and manual sends.
+* Added `记忆` / configured-prefix memory commands for checking the current dynamic state.
+* Added live task logs and instant status responses for long-running remote tasks.
+* Reworked the public README and publishing flow so runtime credentials and local state stay outside the repository.

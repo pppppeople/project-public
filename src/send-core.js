@@ -57,7 +57,14 @@ function appendRecentMessage(text) {
   recent.push({ at: now, kind: 'out', text: String(text).slice(0, 1200) });
   state.recentMessages = recent.slice(-20);
   state.updatedAt = now;
-  writeJson(stateFile, state);
+  writeJson(config.STATE_FILE, state);
+}
+
+function appendMemoryEvent(text) {
+  const events = readJson(config.MEMORY_EVENTS_FILE, []);
+  const list = Array.isArray(events) ? events : [];
+  list.push({ at: new Date().toISOString(), kind: 'out', text: String(text).slice(0, 1200) });
+  writeJson(config.MEMORY_EVENTS_FILE, list.slice(-200));
 }
 
 fetch(baseUrl + '/ilink/bot/sendmessage', {
@@ -78,6 +85,7 @@ fetch(baseUrl + '/ilink/bot/sendmessage', {
       process.exit(1);
     }
     appendRecentMessage(message);
+    appendMemoryEvent(message);
   } catch(e) {}
 }).catch(e => {
   console.error(e.message);
